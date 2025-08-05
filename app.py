@@ -1,38 +1,15 @@
-import streamlit as st
-import cv2
-import numpy as np
+import os
+import gdown
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
 
-# Load model
-model = load_model("best_finetuned_model.h5")
-classes = ['angry', 'fear', 'happy', 'neutral', 'sad', 'surprise']
+# Define path and Google Drive file ID
+model_path = "best_finetuned_model.h5"
+file_id = "1iM4KetgPQM-0vIw2raiGOh_Ij9AZCVr61iM4KetgPQM-0vIw2raiGOh_Ij9AZCVr6"  # <-- Your actual ID here
+gdrive_url = f"https://drive.google.com/uc?id={file_id}"
 
-# Title
-st.title("Real-time Emotion Detection")
-run = st.checkbox('Start Camera')
+# Download the model if not already present
+if not os.path.exists(model_path):
+    gdown.download(gdrive_url, model_path, quiet=False)
 
-FRAME_WINDOW = st.image([])
-
-cap = cv2.VideoCapture(0)
-
-while run:
-    ret, frame = cap.read()
-    if not ret:
-        st.write("Camera not working")
-        break
-
-    face = cv2.resize(frame, (224, 224))
-    face = img_to_array(face) / 255.0
-    face = np.expand_dims(face, axis=0)
-
-    pred = model.predict(face)[0]
-    label = classes[np.argmax(pred)]
-
-    # Draw label on frame
-    cv2.putText(frame, label, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-
-    FRAME_WINDOW.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-else:
-    cap.release()
-    cv2.destroyAllWindows()
+# Load the model
+model = load_model(model_path)
