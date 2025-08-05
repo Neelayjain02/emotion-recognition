@@ -8,7 +8,7 @@ from tensorflow.keras.models import load_model
 
 # --- Download the model from Google Drive ---
 model_path = "best_finetuned_model.h5"
-file_id = "YOUR_FILE_ID_HERE"  # <-- REPLACE THIS
+file_id = "1iM4KetgPQM-0vIw2raiGOh_Ij9AZCVr6"  # <-- REPLACE THIS
 gdrive_url = f"https://drive.google.com/uc?id={file_id}"
 
 if not tf.io.gfile.exists(model_path):
