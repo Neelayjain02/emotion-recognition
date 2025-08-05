@@ -3,10 +3,11 @@ import numpy as np
 import cv2
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-import os
+from PIL import Image
 import gdown
+import os
 
-# Load model from Google Drive using gdown
+# Download model from Google Drive
 @st.cache_resource
 def load_emotion_model():
     model_path = "model/best_model.h5"
@@ -18,31 +19,23 @@ def load_emotion_model():
 model = load_emotion_model()
 emotion_labels = ['angry', 'fear', 'happy', 'neutral', 'sad', 'surprise']
 
-# App UI
-st.title("Real-time Emotion Detection")
-run = st.checkbox('Start Camera')
-FRAME_WINDOW = st.image([])
+# Streamlit UI
+st.title("Emotion Detection from Image")
 
-cap = cv2.VideoCapture(0)
+uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
-while run:
-    ret, frame = cap.read()
-    if not ret:
-        st.warning("Camera not accessible!")
-        break
+if uploaded_file is not None:
+    img = Image.open(uploaded_file).convert('RGB')
+    st.image(img, caption="Uploaded Image", use_column_width=True)
 
-    img = cv2.resize(frame, (224, 224))
-    img = img / 255.0
-    img = np.expand_dims(img, axis=0)
+    # Preprocess
+    img_array = np.array(img)
+    resized = cv2.resize(img_array, (224, 224))
+    normalized = resized / 255.0
+    expanded = np.expand_dims(normalized, axis=0)
 
-    prediction = model.predict(img)
+    # Predict
+    prediction = model.predict(expanded)
     predicted_label = emotion_labels[np.argmax(prediction)]
 
-    # Show predicted label on image
-    cv2.putText(frame, predicted_label, (10, 40), cv2.FONT_HERSHEY_SIMPLEX,
-                1, (0, 255, 0), 2)
-
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    FRAME_WINDOW.image(frame)
-
-cap.release()
+    st.subheader(f"Predicted Emotion: {predicted_label}")
