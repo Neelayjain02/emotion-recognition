@@ -1,60 +1,47 @@
 import streamlit as st
-import tensorflow as tf
 import numpy as np
 import cv2
-import tempfile
-import gdown
+import tensorflow as tf
 from tensorflow.keras.models import load_model
+from PIL import Image
+import tempfile
+import os
 
-# --- Download the model from Google Drive ---
-model_path = "best_finetuned_model.h5"
-file_id = "1iM4KetgPQM-0vIw2raiGOh_Ij9AZCVr6"  # <-- REPLACE THIS
-gdrive_url = f"https://drive.google.com/uc?id={file_id}"
+# Load model
+@st.cache_resource
+def load_emotion_model():
+    return load_model("model/best_model.h5")
 
-if not tf.io.gfile.exists(model_path):
-    with st.spinner('Downloading model...'):
-        gdown.download(gdrive_url, model_path, quiet=False)
+model = load_emotion_model()
+emotion_labels = ['angry', 'fear', 'happy', 'neutral', 'sad', 'surprise']
 
-# --- Load the model ---
-model = load_model(model_path)
+# App UI
+st.title("Real-time Emotion Detection")
 
-# --- Label mapping ---
-class_labels = ['angry', 'fear', 'happy', 'neutral', 'sad', 'surprise']
+run = st.checkbox('Start Camera')
 
-# --- Preprocess function ---
-def preprocess_image(img):
-    img = cv2.resize(img, (224, 224))
-    img = img.astype('float32') / 255.0
-    return np.expand_dims(img, axis=0)
+FRAME_WINDOW = st.image([])
 
-# --- Streamlit UI ---
-st.title("Real-Time Emotion Detection")
+cap = cv2.VideoCapture(0)
 
-option = st.radio("Choose input method:", ['Upload Image', 'Use Webcam'])
+while run:
+    ret, frame = cap.read()
+    if not ret:
+        st.warning("Camera not accessible!")
+        break
 
-if option == 'Upload Image':
-    uploaded_file = st.file_uploader("Upload an image", type=['jpg', 'jpeg', 'png'])
-    if uploaded_file is not None:
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        image = cv2.imdecode(file_bytes, 1)
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        st.image(image_rgb, caption='Uploaded Image', use_column_width=True)
+    img = cv2.resize(frame, (224, 224))
+    img = img / 255.0
+    img = np.expand_dims(img, axis=0)
 
-        pred = model.predict(preprocess_image(image))
-        label = class_labels[np.argmax(pred)]
-        st.markdown(f"### Prediction: `{label.upper()}`")
+    prediction = model.predict(img)
+    predicted_label = emotion_labels[np.argmax(prediction)]
 
-elif option == 'Use Webcam':
-    st.warning("Camera preview will open in a new tab or window if your browser supports it.")
+    # Display label
+    cv2.putText(frame, predicted_label, (10, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    picture = st.camera_input("Take a picture")
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    FRAME_WINDOW.image(frame)
 
-    if picture:
-        file_bytes = np.asarray(bytearray(picture.read()), dtype=np.uint8)
-        image = cv2.imdecode(file_bytes, 1)
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        st.image(image_rgb, caption='Captured Image', use_column_width=True)
-
-        pred = model.predict(preprocess_image(image))
-        label = class_labels[np.argmax(pred)]
-        st.markdown(f"### Prediction: `{label.upper()}`")
+cap.release()
