@@ -3,4 +3,5 @@ opencv-python
 tensorflow
 numpy
 Pillow
+gdown
 
